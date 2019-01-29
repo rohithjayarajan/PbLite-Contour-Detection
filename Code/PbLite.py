@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-# Code starts here:
-
 import os
 import math
 import numpy as np
@@ -10,7 +8,6 @@ from scipy.ndimage import convolve, rotate
 import matplotlib.pyplot as plt
 import imutils
 from sklearn.cluster import KMeans
-# from PIL import Image
 
 # debug = True
 debug = False
@@ -76,19 +73,18 @@ def GenerateDoGFilterBank(Size, Scale, NumOrientations):
         DoGFilterBank.append(GenerateDoGFilter(
             Size, Scale, Scale, o*360/NumOrientations))
 
-    DisplayFilterBank(DoGFilterBank, 4, 4)
-
     return DoGFilterBank
 
 
-def DisplayFilterBank(FilterBank, Rows, Columns):
+def DisplayFilterBank(FilterBank, Rows, Columns, Cmap, Path, Dst):
     w = 10
     h = 10
     fig = plt.figure(figsize=(8, 8))
     for i in range(1, Columns*Rows + 1):
         img = np.random.randint(10, size=(h, w))
         fig.add_subplot(Rows, Columns, i)
-        plt.imshow(FilterBank[i-1], cmap='gray')
+        plt.imshow(FilterBank[i-1], cmap=Cmap)
+    fig.savefig(os.path.join(Path, Dst))
     plt.show()
 
 # 48 filters
@@ -144,8 +140,6 @@ def GenerateLMSFilterBank(Size):
         LMSFilterBank.append(LaplacianOfGaussian(Size, s, s))
         LMSFilterBank.append(LaplacianOfGaussian(Size, 3*s, 3*s))
 
-    DisplayFilterBank(LMSFilterBank, 8, 6)
-
     if debug:
         for i in LMSFilterBank:
             print(i.shape)
@@ -179,14 +173,7 @@ def GenerateLMLFilterBank(Size):
         LMLFilterBank.append(LaplacianOfGaussian(Size, s, s))
         LMLFilterBank.append(LaplacianOfGaussian(Size, 3*s, 3*s))
 
-    DisplayFilterBank(LMLFilterBank, 8, 6)
-
     return LMLFilterBank
-
-# LML
-# math.sqrt(2), 2, 2.math.sqrt(2), 4
-
-# Gabor Filter
 
 
 def GenerateGaborFilter(Size, Sigma, Theta, Lambda, Psi, Gamma):
@@ -204,7 +191,7 @@ def GenerateGaborFilter(Size, Sigma, Theta, Lambda, Psi, Gamma):
     return GaborFilter
 
 
-def GenerateGaborFilterBank(Size, SigmaList, NumOrientations, LambdaList, PsiList, GammaList):
+def GenerateGaborFilterBank(Size, SigmaList, NumOrientations, LambdaList, PsiList, GammaList, Cmap, Path, Dst):
     GaborFilterBank = []
 
     for s in SigmaList:
@@ -216,7 +203,7 @@ def GenerateGaborFilterBank(Size, SigmaList, NumOrientations, LambdaList, PsiLis
                             Size, s, o*360/NumOrientations, l, p, g))
 
     DisplayFilterBank(GaborFilterBank, int(
-        len(SigmaList)*NumOrientations*len(LambdaList)*len(PsiList)*len(GammaList)/8), 8)
+        len(SigmaList)*NumOrientations*len(LambdaList)*len(PsiList)*len(GammaList)/8), 8, Cmap, Path, Dst)
     return GaborFilterBank
 
 
@@ -232,7 +219,7 @@ def GenerateHalfDisc(Radius):
     return HalfDisk
 
 
-def GenerateHalfDiscBank(RadiusList, NumOrientations):
+def GenerateHalfDiscBank(RadiusList, NumOrientations, Cmap, Path, Dst):
 
     HalfDisksBank = []
     for r in RadiusList:
@@ -253,7 +240,8 @@ def GenerateHalfDiscBank(RadiusList, NumOrientations):
             RotatedDisc[RotatedDisc < 0.3] = 0
             HalfDisksBank.append(RotatedDisc)
             # print(RotatedDisc)
-    DisplayFilterBank(HalfDisksBank, int(len(RadiusList)*NumOrientations/8), 8)
+    DisplayFilterBank(HalfDisksBank, int(
+        len(RadiusList)*NumOrientations/8), 8, Cmap, Path, Dst)
     return HalfDisksBank
 
 
@@ -299,21 +287,16 @@ def ComputeMapGradient(Image, HalfDiscBank, Bins):
             Image, HalfDiscBank[i], HalfDiscBank[i+1], Bins)
         count += 1
 
-    print(MapGradient.shape)
+    # print(MapGradient.shape)
     return(MapGradient)
 
 
 def ComputeGradient(MapGradient):
-    # MapGradientShape = MapGradient.shape
-    # Gradient = np.zeros((MapGradientShape[0], MapGradientShape[1]))
-    # for i in range(MapGradientShape[2]):
-    #     Gradient += MapGradient[:, :, i]
-
-    # return Gradient/MapGradientShape[2]
     return np.mean(MapGradient, axis=2)
 
 
-def main():
+def PbLite(ImageName):
+    ResultsPath = os.path.join(os.getcwd(), 'Code', 'Results')
     """
     Generate Difference of Gaussian Filter Bank: (DoG)
     Display all the filters in this filter bank and save image as DoG.png,
@@ -322,14 +305,17 @@ def main():
     DoGFilterBank1 = GenerateDoGFilterBank(12, 1.2, 16)
     DoGFilterBank2 = GenerateDoGFilterBank(12, 1.4, 16)
     DoGFilterBank = DoGFilterBank1 + DoGFilterBank2
+    DisplayFilterBank(DoGFilterBank, 4, 8, 'gray', ResultsPath, 'DoG.png')
 
     """
 	Generate Leung-Malik Filter Bank: (LM)
 	Display all the filters in this filter bank and save image as LM.png,
 	use command "cv2.imwrite(...)"
 	"""
-    # LMSFilterBank = GenerateLMSFilterBank(38)
-    # LMLFilterBank = GenerateLMLFilterBank(38)
+    LMSFilterBank = GenerateLMSFilterBank(38)
+    LMLFilterBank = GenerateLMLFilterBank(38)
+    LMFilterBank = LMSFilterBank + LMLFilterBank
+    DisplayFilterBank(LMFilterBank, 8, 12, 'gray', ResultsPath, 'LM.png')
 
     """
 	Generate Gabor Filter Bank: (Gabor)
@@ -342,8 +328,8 @@ def main():
     LambdaList = [5, 7, 10]
     PsiList = [180]
     GammaList = [0.8]
-    # GaborFilterBank = GenerateGaborFilterBank(38, SigmaList, NumOrientations,
-    #                         LambdaList, PsiList, GammaList)
+    GaborFilterBank = GenerateGaborFilterBank(38, SigmaList, NumOrientations,
+                                              LambdaList, PsiList, GammaList, 'gray', ResultsPath, 'Gabor.png')
 
     """
 	Generate Half-disk masks
@@ -351,14 +337,15 @@ def main():
 	use command "cv2.imwrite(...)"
 	"""
 
-    HalfDiscBank = GenerateHalfDiscBank([5, 9, 15], 16)
+    HalfDiscBank = GenerateHalfDiscBank(
+        [5, 9, 15], 16, 'gray', ResultsPath, 'HDMasks.png')
 
     """
 	Generate Texton Map
 	Filter image using oriented gaussian filter bank
 	"""
     AbsolutePathImage = os.path.join(
-        os.getcwd(), 'BSDS500', 'Images', '1.jpg')
+        os.getcwd(), 'BSDS500', 'Images', ImageName + '.jpg')
 
     ColorImage = cv2.imread(AbsolutePathImage)
 
@@ -383,8 +370,10 @@ def main():
 	Display texton map and save image as TextonMap_ImageName.png,
 	use command "cv2.imwrite('...)"
 	"""
+    TextonName = 'TextonMap_' + ImageName + '.png'
     TextonMap = TextonMap.reshape(ColorImageShape[0], ColorImageShape[1])
     # print(TextonMap.shape)
+    plt.imsave(os.path.join(ResultsPath, TextonName), TextonMap, cmap='jet')
     plt.imshow(TextonMap, cmap='jet')
     plt.show()
 
@@ -394,10 +383,12 @@ def main():
 	Display Tg and save image as Tg_ImageName.png,
 	use command "cv2.imwrite(...)"
 	"""
-
+    TextonGradientName = 'Tg_' + ImageName + '.png'
     TextonMapGradient = ComputeMapGradient(TextonMap, HalfDiscBank, K1)
     TextonGradient = ComputeGradient(TextonMapGradient)
 
+    plt.imsave(os.path.join(ResultsPath, TextonGradientName),
+               TextonGradient, cmap='jet')
     plt.imshow(TextonGradient, cmap='jet')
     plt.show()
 
@@ -413,9 +404,12 @@ def main():
     ret2, BrightnessMap, center2 = cv2.kmeans(
         D1BWImage, K2, None, criteria2, 10, cv2.KMEANS_RANDOM_CENTERS)
 
+    BrightnessName = 'BrightnessMap_' + ImageName + '.png'
     BrightnessMap = BrightnessMap.reshape(
         ColorImageShape[0], ColorImageShape[1])
     # print(BrightnessMap.shape)
+    plt.imsave(os.path.join(ResultsPath, BrightnessName),
+               BrightnessMap, cmap='jet')
     plt.imshow(BrightnessMap, cmap='jet')
     plt.show()
 
@@ -425,10 +419,12 @@ def main():
 	Display Bg and save image as Bg_ImageName.png,
 	use command "cv2.imwrite(...)"
 	"""
-
+    BrightnessGradientName = 'Bg_' + ImageName + '.png'
     BrightnessMapGradient = ComputeMapGradient(BrightnessMap, HalfDiscBank, K2)
     BrightnessGradient = ComputeGradient(BrightnessMapGradient)
 
+    plt.imsave(os.path.join(ResultsPath, BrightnessGradientName),
+               BrightnessGradient, cmap='jet')
     plt.imshow(BrightnessGradient, cmap='jet')
     plt.show()
 
@@ -445,8 +441,10 @@ def main():
     ret3, ColorMap, center3 = cv2.kmeans(
         DN3Image, K3, None, criteria3, 10, cv2.KMEANS_RANDOM_CENTERS)
 
+    ColorName = 'ColorMap_' + ImageName + '.png'
     ColorMap = ColorMap.reshape(ColorImageShape[0], ColorImageShape[1])
     # print(ColorMap.shape)
+    plt.imsave(os.path.join(ResultsPath, ColorName), ColorMap, cmap='jet')
     plt.imshow(ColorMap, cmap='jet')
     plt.show()
 
@@ -456,10 +454,12 @@ def main():
 	Display Cg and save image as Cg_ImageName.png,
 	use command "cv2.imwrite(...)"
 	"""
-
+    ColorGradientName = 'Cg_' + ImageName + '.png'
     ColorMapGradient = ComputeMapGradient(ColorMap, HalfDiscBank, K3)
     ColorGradient = ComputeGradient(ColorMapGradient)
 
+    plt.imsave(os.path.join(ResultsPath, ColorGradientName),
+               ColorGradient, cmap='jet')
     plt.imshow(ColorGradient, cmap='jet')
     plt.show()
 
@@ -468,11 +468,9 @@ def main():
 	use command "cv2.imread(...)"
 	"""
     AbsolutePathSobelBaseline = os.path.join(
-        os.getcwd(), 'BSDS500', 'SobelBaseline', '1.png')
+        os.getcwd(), 'BSDS500', 'SobelBaseline', ImageName + '.png')
 
     SobelBaselineImage = cv2.imread(AbsolutePathSobelBaseline, 0)
-    print("sobel")
-    print(SobelBaselineImage.shape)
     # cv2.imshow('image', SobelBaselineImage)
     # cv2.waitKey(0)
     # cv2.destroyAllWindows()
@@ -482,7 +480,7 @@ def main():
 	use command "cv2.imread(...)"
 	"""
     AbsolutePathCannyBaseline = os.path.join(
-        os.getcwd(), 'BSDS500', 'CannyBaseline', '1.png')
+        os.getcwd(), 'BSDS500', 'CannyBaseline', ImageName + '.png')
 
     CannyBaselineImage = cv2.imread(AbsolutePathCannyBaseline, 0)
     # cv2.imshow('image', CannyBaselineImage)
@@ -494,11 +492,13 @@ def main():
 	Display PbLite and save image as PbLite_ImageName.png
 	use command "cv2.imwrite(...)"
 	"""
+    PbLiteName = 'PbLite_' + ImageName + '.png'
     w1 = 0.5
     w2 = 0.5
     PbLite = np.multiply((TextonGradient + BrightnessGradient +
                           ColorGradient)/(3.0), w1*CannyBaselineImage + w2*SobelBaselineImage)
 
+    plt.imsave(os.path.join(ResultsPath, PbLiteName), PbLite, cmap='gray')
     plt.imshow(PbLite, cmap='gray')
     plt.show()
 
@@ -509,6 +509,11 @@ def main():
     plt.imshow((TextonGradient + BrightnessGradient +
                 ColorGradient)/(3.0), cmap='gray')
     plt.show()
+
+
+def main():
+    for i in range(1, 11):
+        PbLite(str(i))
 
 
 if __name__ == '__main__':
