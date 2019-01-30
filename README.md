@@ -39,12 +39,11 @@ A complete installation guide for OpenCV can be found [here][reference-id-for-he
 ## Standard install via command-line
 ```
 git clone --recursive https://github.com/rohithjayarajan/PbLite-Contour-Detection.git
-cd <path to repository>
 ```
 
 Run program for 10 images in the BSDS Images folder: 
 ```
-cd Phase1
+cd <path to repository>
 python ./Code/Wrapper.py
 ```
 
