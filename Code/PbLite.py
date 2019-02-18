@@ -5,6 +5,9 @@
 @author  rohithjayarajan
 @date 1/28/2019
 Template Credits: Nitin J Sanket and Chahatdeep Singh
+
+Licensed under the
+GNU General Public License v3.0
 """
 
 import os
